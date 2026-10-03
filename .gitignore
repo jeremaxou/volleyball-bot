@@ -1,6 +1,7 @@
 .env
 dispos.json
 dispos_interessantes_actuelles.json
+dispos_interessantes_passes.json
 debug/
 erreur.png
 __pycache__/
