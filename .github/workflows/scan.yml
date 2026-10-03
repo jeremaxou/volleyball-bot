@@ -1,0 +1,64 @@
+name: Scan volley
+
+on:
+  schedule:
+    # toutes les 10 min de 7:00 à 23:50 heure japonaise (le cron de GitHub est en UTC, JST = UTC+9)
+    - cron: "*/10 22-23,0-14 * * *"
+  workflow_dispatch:   # ajoute un bouton "Run workflow" pour lancer à la main
+
+permissions:
+  contents: write      # nécessaire pour enregistrer dispos_interessantes_passes.json
+
+concurrency:
+  group: scan-volley   # jamais deux scans en même temps
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Installer les dépendances
+        run: |
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Scan + analyse + notification
+        env:
+          LOGIN_ID: ${{ secrets.LOGIN_ID }}
+          LOGIN_PWD: ${{ secrets.LOGIN_PWD }}
+          NTFY_URL: ${{ secrets.NTFY_URL }}
+        run: python get_and_analyze.py
+
+      - name: Enregistrer l'historique
+        run: |
+          if [ -f dispos_interessantes_passes.json ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898279+github-actions[bot]@users.noreply.github.com"
+            git add dispos_interessantes_passes.json
+            git diff --cached --quiet || (git commit -m "maj dispos" && git push)
+          fi
+
+      - name: Capture d'écran en cas d'erreur
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: erreur
+          path: erreur.png
+          if-no-files-found: ignore
+
+      - name: Alerte si le bot plante
+        if: failure()
+        env:
+          NTFY_URL: ${{ secrets.NTFY_URL }}
+        run: >
+          curl -H "Title: Volley bot FAILED" -H "Tags: warning"
+          -d "Run failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          "$NTFY_URL"
