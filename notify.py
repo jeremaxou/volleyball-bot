@@ -12,7 +12,7 @@ from analyse_dispo import FICHIER_SORTIE as FICHIER_ACTUELLES, cle, trier
 
 load_dotenv()
 
-TOPIC_URL = os.environ["NTFY_URL"]   # dans .env en local, dans les Secrets GitHub sur le serveur
+TOPIC_URL = os.environ["NTFY_URL"].strip()   # .strip() retire les espaces et retours à la ligne parasites   # dans .env en local, dans les Secrets GitHub sur le serveur
 FICHIER_PASSEES = "dispos_interessantes_passes.json"
 NOTIFIER_SANS_CHANGEMENT = True   # True = notification à chaque exécution, même sans changement
 
